@@ -8,31 +8,31 @@ def main():
     t = np.linspace(0,tf,int(tf/dT)+1)
     N = len(t)
     #true state info
-    x0 = np.array([])
-    params = np.array([[],\
-                       [],\
-                       [],\
-                       [],\
-                       [],\
-                       []]) #k2,k0,k1,k6,ka,km
-    q = np.array([[],\
-                  [],\
-                  []])
-    r = np.array([[],\
-                  []])
+    x0 = np.array([[200./60],\
+                   [300.],\
+                   [2000.]]) #G (dl/sec),I(pmole/L),D(mg)
+    params = np.array([[0.01/60],\
+                       [0.611/60],\
+                       [0.665/60],\
+                       [0.508/60],\
+                       [0.042/60],\
+                       [400]]) #k2,k0,k1,k6,ka,km(1/L) (units converted to seconds)
+    q = 0.05*x0
+    r = np.array([[0.0667],\
+                  [6]]) #2% of x0 for G and I
     Q = np.diag(q)
     R = np.diag(r)
     dynamics = Dynamics(x0,params,f_x,Q,R,N)
     #estimate of state info
-    mu0 = np.array([[],\
-                    [],\
-                    [],\
-                    [],\
-                    [],\
-                    [],\
-                    [],\
-                    [],\
-                    []])
+    mu0 = np.array([[4.],\
+                    [350],\
+                    [500.],\
+                    [0.015/60],\
+                    [0.650/60],\
+                    [0.7/60],\
+                    [0.450/60],\
+                    [0.05/60],\
+                    [500]])
     S0 = np.eye(8)
     q_hat = q #np.array([])
     r_hat = r #np.array([])
