@@ -25,6 +25,21 @@ def main():
     R = np.diag(np.squeeze(r))
     dynamics = Dynamics(x0,params,f_x,Q,R,N)
 
+    #adding disturbance (step from food intake)
+    step_idx = 2
+    step_t0 = 8
+    step_height = 1000.
+    step = lambda t: step_height if t - step_t0 == 0 else 0.
+    dynamics.create_disturbance(step,step_idx)
+
+    # #adding disturbance (sinusoidal variation in I from heartbeat)
+    sin_idx = 1
+    sin_t0 = 5
+    sin_amp = 5.
+    sin_freq = 1
+    sin_I = lambda t: sin_amp*np.sin((sin_freq*2*np.pi)*(t-sin_t0)) if t >= sin_t0 else 0.
+    dynamics.create_disturbance(sin_I,sin_idx)
+
     #estimate of state info
     mu0 = np.array([[4.],\
                     [350],\
@@ -59,7 +74,7 @@ def simulate(dT,t,dynamics,ekf):
     #simulation loop
     for i in range(1,len(t)):
         u = np.array([0.])
-        x,measurement = dynamics.update_state(u,dT)
+        x,measurement = dynamics.update_state(u,t[i],dT)
         mu = ekf.update_estimate(u,measurement,dT)
 
 def prmse(x_true,x_exp):
@@ -163,8 +178,9 @@ class Dynamics():
         self.R = R
         self.f = f
         self.itr = 1
+        self.disturbances = []
 
-    def update_state(self,u,dT):
+    def update_state(self,u,t,dT):
         self.make_space()
         i = self.itr
         #updating state
@@ -175,6 +191,7 @@ class Dynamics():
         measurement = np.squeeze(np.array([self.x[0,i],self.x[1,i]])\
             + np.random.multivariate_normal(np.zeros((self.m,)),self.R))
         self.measurement[:,i] = np.maximum(measurement,np.zeros(self.m,))
+        self.add_disturbances(t)
         self.itr += 1  
         return self.x[:,i],self.measurement[:,i]
 
@@ -184,7 +201,13 @@ class Dynamics():
             self.x = np.reshape(self.x,(dim[0],dim[1]*2))
             self.x = np.reshape(self.x,(dim[0],dim[1]*2))
 
+    def create_disturbance(self,dist,dist_idx):
+        self.disturbances.append((dist,dist_idx))
 
+    def add_disturbances(self,t):
+        for dist in self.disturbances:
+            d,idx = dist
+            self.x[idx,self.itr] = self.x[idx,self.itr] + d(t)
 class EKF():
     def __init__(self,mu0,S0,f,Q,R,adaptive,alpha,N):
         dim1 = np.shape(Q)
