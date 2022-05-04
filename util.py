@@ -4,9 +4,10 @@ import matplotlib.pyplot as plt
 def main():
     #time info
     dT = 0.1
-    tf = 15
+    tf = 10
     t = np.linspace(0,tf,int(tf/dT)+1)
     N = len(t)
+
     #true state info
     x0 = np.array([[200./60],\
                    [300.],\
@@ -15,14 +16,15 @@ def main():
                        [0.611/60],\
                        [0.665/60],\
                        [0.508/60],\
-                       [0.042/60],\
-                       [400]]) #k2,k0,k1,k6,ka,km(1/L) (units converted to seconds)
+                       [4.2/60],\
+                       [1./0.0025]]) #k2,k0,k1,k6,ka,km(1/L) (units converted to seconds)
     q = 0.05*x0
     r = np.array([[0.0667],\
                   [6]]) #2% of x0 for G and I
     Q = np.diag(np.squeeze(q))
     R = np.diag(np.squeeze(r))
     dynamics = Dynamics(x0,params,f_x,Q,R,N)
+
     #estimate of state info
     mu0 = np.array([[4.],\
                     [350],\
@@ -34,37 +36,67 @@ def main():
                     [0.05/60],\
                     [500]])
     S0 = np.eye(9)
-    q_hat = 0.05*np.vstack((x0,params)) #np.array([])
-    r_hat = r #np.array([])
+    q_hat = 0.5*np.vstack((x0,params)) 
+    r_hat = 0.5*r 
     Q_hat = np.diag(np.squeeze(q_hat))
     R_hat = np.diag(np.squeeze(r_hat))
-    window_size = 10
-    adaptive = False
-    ekf = EKF(mu0,S0,f_x_and_params,Q_hat,R_hat,adaptive,window_size,N)
+    alpha = 0.01
+    adaptive = True
+    ekf = EKF(mu0,S0,f_x_and_params,Q_hat,R_hat,adaptive,alpha,N)
+   
+    #simulate
+    print('Using Adaptive EKF = ' + str(adaptive))
+    simulate(dT,t,dynamics,ekf)
+    #calculating error
+    x_true = np.vstack((dynamics.x[:,:dynamics.itr],params*np.ones((1,dynamics.itr))))
+    x_exp = ekf.mu
+    error = prmse(x_true,x_exp)
+    #plotting
+    plot(t,dynamics,ekf)
+    plt.show()
+
+def simulate(dT,t,dynamics,ekf):
     #simulation loop
     for i in range(1,len(t)):
         u = np.array([0.])
         x,measurement = dynamics.update_state(u,dT)
         mu = ekf.update_estimate(u,measurement,dT)
 
+def prmse(x_true,x_exp):
+    N = np.shape(x_true)[1]
+    error =  np.divide(np.sqrt(1/N)*np.linalg.norm(x_true - x_exp,ord=2,axis=1)*100*N,np.sum(x_true,axis=1))
+    print('---Percent RMSE (%)---')
+    print('prmse G: ' + str(round(error[0],2)) + '%')
+    print('prmse I: ' + str(round(error[1],2)) + '%')
+    print('prmse D: ' + str(round(error[2],2)) + '%')
+    print('prmse k2: ' + str(round(error[3],2)) + '%')
+    print('prmse k0: ' + str(round(error[4],2)) + '%')
+    print('prmse k1: ' + str(round(error[5],2)) + '%')
+    print('prmse k6: ' + str(round(error[6],2)) + '%')
+    print('prmse ka: ' + str(round(error[7],2)) + '%')
+    print('prmse km: ' + str(round(error[8],2)) + '%')
+    print('average prmse:' + str(round(np.sum(error)/9,2)) + '%')
+    return error
+    
+def plot(t,dynamics,ekf):
     #plot of state and estimate of state dynamics
     plt.figure()
     plt.subplot(3,1,1)
     plt.plot(t,dynamics.x[0,:dynamics.itr],label='true state')
     plt.plot(t,ekf.mu[0,:ekf.itr],label='ekf estimate')
-    plt.ylabel('Glucose Concentration in Blood []')
+    plt.ylabel('Glucose Concentration in Blood [dl / sec]',fontsize = 9)
     plt.title('States and Estimates vs. Time')
     plt.legend()
 
     plt.subplot(3,1,2)
     plt.plot(t,dynamics.x[1,:dynamics.itr])
     plt.plot(t,ekf.mu[1,:ekf.itr])
-    plt.ylabel('Insulin Concentration in Blood []')
+    plt.ylabel('Insulin Concentration in Blood [pmol/liter]',fontsize = 9)
 
     plt.subplot(3,1,3)
     plt.plot(t,dynamics.x[2,:dynamics.itr])
     plt.plot(t,ekf.mu[2,:ekf.itr])
-    plt.ylabel('Glucose Concentration in Stomach []')
+    plt.ylabel('Glucose Concentration in Stomach [mg]',fontsize = 9)
     plt.xlabel('Time (seconds)')   
 
     #plot of parameter dynamics
@@ -72,36 +104,35 @@ def main():
     plt.subplot(6,1,1)
     plt.plot(t,dynamics.params[0]*np.ones((len(t),1)),label='actual value')
     plt.plot(t,ekf.mu[3,:ekf.itr],label='ekf estimate')
-    plt.ylabel('k2 []')
+    plt.ylabel('k2 [mg l / dl sec pmol]',fontsize = 8)
     plt.title('Parameters and Estimates vs. Time')
+    plt.legend(loc='right')
 
     plt.subplot(6,1,2)
     plt.plot(t,dynamics.params[1]*np.ones((len(t),1)))
     plt.plot(t,ekf.mu[4,:ekf.itr])
-    plt.ylabel('k0 []')
+    plt.ylabel('k0 [1 / dl sec]',fontsize = 8)
 
     plt.subplot(6,1,3)
     plt.plot(t,dynamics.params[2]*np.ones((len(t),1)))
     plt.plot(t,ekf.mu[5,:ekf.itr])
-    plt.ylabel('k1 []')
+    plt.ylabel('k1 [pmol dl / sec mg l]',fontsize = 8)
 
     plt.subplot(6,1,4)
     plt.plot(t,dynamics.params[3]*np.ones((len(t),1)))
     plt.plot(t,ekf.mu[6,:ekf.itr])
-    plt.ylabel('k6 []')
+    plt.ylabel('k6 [1 / sec]',fontsize = 8)
 
     plt.subplot(6,1,5)
     plt.plot(t,dynamics.params[4]*np.ones((len(t),1)))
     plt.plot(t,ekf.mu[7,:ekf.itr])
-    plt.ylabel('ka []')
+    plt.ylabel('ka [1 / sec]',fontsize = 8)
 
     plt.subplot(6,1,6)
     plt.plot(t,dynamics.params[5]*np.ones((len(t),1)))
     plt.plot(t,ekf.mu[8,:ekf.itr])
-    plt.ylabel('km []')
+    plt.ylabel('km [1 / l]',fontsize = 8)
     plt.xlabel('Time (seconds)')
-    
-    plt.show()
 
 def f_x(x,u,params):
     params = np.squeeze(params)
@@ -123,8 +154,7 @@ class Dynamics():
         self.n = dim1[0]
         dim2 = np.shape(R)
         self.m = dim2[0]
-
-        self.x = np.zeros((self.n,N)) #np array
+        self.x = np.zeros((self.n,N)) 
         self.x[:,0] = np.squeeze(x0)
         self.params = params
         self.measurement = np.zeros((self.m,N))
@@ -137,10 +167,14 @@ class Dynamics():
     def update_state(self,u,dT):
         self.make_space()
         i = self.itr
-        self.x[:,i] = np.squeeze(self.x[:,i-1] + dT*self.f(self.x[:,i-1],u,self.params) \
+        #updating state
+        x = np.squeeze(self.x[:,i-1] + dT*self.f(self.x[:,i-1],u,self.params) \
             + np.random.multivariate_normal(np.zeros((self.n,)),self.Q))
-        self.measurement[:,i] = np.squeeze(np.array([self.x[0,i],self.x[1,i]])\
+        self.x[:,i] = np.maximum(x,np.zeros(self.n,))
+        #simulating measurement
+        measurement = np.squeeze(np.array([self.x[0,i],self.x[1,i]])\
             + np.random.multivariate_normal(np.zeros((self.m,)),self.R))
+        self.measurement[:,i] = np.maximum(measurement,np.zeros(self.m,))
         self.itr += 1  
         return self.x[:,i],self.measurement[:,i]
 
@@ -152,15 +186,14 @@ class Dynamics():
 
 
 class EKF():
-    def __init__(self,mu0,S0,f,Q,R,adaptive,window_size,N):
+    def __init__(self,mu0,S0,f,Q,R,adaptive,alpha,N):
         dim1 = np.shape(Q)
         self.n = dim1[0]
         dim2 = np.shape(R)
         self.m = dim2[0]
-
         self.mu = np.zeros((self.n,N))
         self.mu[:,0] = np.squeeze(mu0)
-        self.mu_pred = np.zeros((self.n,N)) #<-- need to initialize?
+        self.mu_pred = np.zeros((self.n,N)) 
         self.S = S0
         self.f = f
         self.C = np.zeros((self.m,self.n))
@@ -169,7 +202,7 @@ class EKF():
         self.Q = Q
         self.R = R
         self.adaptive = adaptive
-        self.W = window_size
+        self.alpha = alpha
         self.d = np.zeros((self.m,N))
         self.itr = 1
 
@@ -185,11 +218,13 @@ class EKF():
             [0.,0.,0.,0.,0.,0.,0.,0.,0.],\
             [0.,0.,0.,0.,0.,0.,0.,0.,0.],\
             [0.,0.,0.,0.,0.,0.,0.,0.,0.],\
-            [0.,0.,0.,0.,0.,0.,0.,0.,0.]]) #<--dimensions on x given estimating param from u??
+            [0.,0.,0.,0.,0.,0.,0.,0.,0.]]) 
         #discretize A
         A = np.eye(np.shape(A)[0]) + dT*A
         #predict
-        self.mu_pred[:,i] = np.squeeze(self.f(self.mu[:3,i-1],u,self.mu[3:,i-1]))
+        mu_pred = self.mu[:,i-1] + dT*np.squeeze(self.f(self.mu[:3,i-1],u,self.mu[3:,i-1]))
+        #saturating 
+        self.mu_pred[:,i] = np.maximum(mu_pred,np.zeros(self.n,))
         S_predict = A@self.S@A.T + self.Q
 
         #linearize C with mu_pred (already done because C is constant)
@@ -197,24 +232,18 @@ class EKF():
         K = S_predict@self.C.T@np.linalg.inv(self.C@S_predict@self.C.T+self.R)
         #calculated predicted measurement
         pred_measurement = self.C@self.mu_pred[:,i]
+        pred_measurement = np.maximum(pred_measurement,np.zeros((self.m,)))
         #update
-        self.mu[:,i] = np.squeeze(self.mu_pred[:,i] \
-                       + K@(measurement - pred_measurement))
+        d = measurement - pred_measurement
+        mu = np.squeeze(self.mu_pred[:,i] + K@d)
+        #saturating
+        self.mu[:,i] = np.maximum(mu,np.zeros(self.n,))
         self.S = (np.eye(np.shape(A)[0]) + K@self.C)@S_predict
 
         #update Q if adaptive
         if self.adaptive:
-            self.d[:,i] = np.squeeze(measurement - pred_measurement)
-            if i < self.W:
-                D = (1/self.W)*np.sum(self.d[:,:i]@self.d[:,:i].T)
-                delta_x = self.mu[:,:i] - self.mu_pred[:,:i]
-                L = np.divide(delta_x,self.d[:,:i])
-                self.Q = L@D@L.T
-            else:
-                D = (1/self.W)*np.sum(self.d[:,(i-self.W):]@self.d[:,(i-self.W):].T)
-                delta_x = self.mu[:,(i-self.W):] - self.mu_pred[:,(i-self.W):]
-                L = np.divide(delta_x,self.d[:,(i-self.W):])
-                self.Q = L@D@L.T
+            d = np.reshape(d,(self.m,1))
+            self.Q = self.alpha*self.Q + (1-self.alpha)*K@d@d.T@K.T
         self.itr += 1
         return self.mu[:,i]
 
