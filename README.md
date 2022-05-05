@@ -1,1 +1,2 @@
-# AA203_Final_Project
+Read Tom's code!!
+Initialize dynamics class and EKF class to figure out how the state propogates
