@@ -70,11 +70,19 @@ def main():
     plot(t,dynamics,ekf)
     plt.show()
 
+## MAIN STOPS HERE ##
+
 def simulate(dT,t,dynamics,ekf):
     #simulation loop
     for i in range(1,len(t)):
         u = np.array([0.])
         x,measurement = dynamics.update_state(u,t[i],dT)
+        mu = ekf.update_estimate(u,measurement,dT)
+
+def simulate_withControl(dT,t,dynamics,ekf, u):
+    #simulation loop
+    for i in range(1,len(t)):
+        x,measurement = dynamics.update_state(u[i],t[i],dT)
         mu = ekf.update_estimate(u,measurement,dT)
 
 def prmse(x_true,x_exp):
