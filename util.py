@@ -79,12 +79,6 @@ def simulate(dT,t,dynamics,ekf):
         x,measurement = dynamics.update_state(u,t[i],dT)
         mu = ekf.update_estimate(u,measurement,dT)
 
-def simulate_withControl(dT,t,dynamics,ekf, u):
-    #simulation loop
-    for i in range(1,len(t)):
-        x,measurement = dynamics.update_state(u[i],t[i],dT)
-        mu = ekf.update_estimate(u,measurement,dT)
-
 def prmse(x_true,x_exp):
     N = np.shape(x_true)[1]
     error =  np.divide(np.sqrt(1/N)*np.linalg.norm(x_true - x_exp,ord=2,axis=1)*100*N,np.sum(x_true,axis=1))
