@@ -43,11 +43,10 @@ def simulate_withControl(dT, t, dynamics, ekf, lqr):
         x,measurement = dynamics.update_state(u,t[i],dT)
         u = calculate_control(K, x_error(x, lqr.xStar))
         mu = ekf.update_estimate(u,measurement,dT)
-        if i%10 == 0:
-            A,B = recalc_Dynamics(mu[3:,i-1])
-            lqr.A = A
-            lqr.B = B
-            K, P = lqr.find_K_P()
+        A,B = recalc_Dynamics(mu[3:,i-1])
+        lqr.A = A
+        lqr.B = B
+        K, P = lqr.find_K_P()
 
 def recalc_Dynamics(params):
     params = np.squeeze(params)

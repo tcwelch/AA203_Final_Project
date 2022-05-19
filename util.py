@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 def main():
     #time info
     dT = 0.1
-    tf = 10
+    tf = 10000
     t = np.linspace(0,tf,int(tf/dT)+1)
     N = len(t)
 
@@ -19,26 +19,28 @@ def main():
                        [0.042/60],\
                        [1./0.0025]]) #k2,k0,k1,k6,ka,km(1/L) (units converted to seconds)
     q = 0.05*x0
+    #q[2] = 0 # TOGGLE on if you don't want noise in sugar intake 
     r = np.array([[0.0667],\
                   [6]]) #2% of x0 for G and I
     Q = np.diag(np.squeeze(q))
+    Q[2] = 0 #TOGGLE on if you don't want noise in sugar intake
     R = np.diag(np.squeeze(r))
     dynamics = Dynamics(x0,params,f_x,Q,R,N)
 
-    #adding disturbance (step from food intake)
-    step_idx = 2
-    step_t0 = 8
-    step_height = 1000.
-    step = lambda t: step_height if t - step_t0 == 0 else 0.
-    dynamics.create_disturbance(step,step_idx)
+    # #adding disturbance (step from food intake)
+    # step_idx = 2
+    # step_t0 = 8
+    # step_height = 1000.
+    # step = lambda t: step_height if t - step_t0 == 0 else 0.
+    # dynamics.create_disturbance(step,step_idx)
 
-    # #adding disturbance (sinusoidal variation in I from heartbeat)
-    sin_idx = 1
-    sin_t0 = 5
-    sin_amp = 5.
-    sin_freq = 1
-    sin_I = lambda t: sin_amp*np.sin((sin_freq*2*np.pi)*(t-sin_t0)) if t >= sin_t0 else 0.
-    dynamics.create_disturbance(sin_I,sin_idx)
+    # # #adding disturbance (sinusoidal variation in I from heartbeat)
+    # sin_idx = 1
+    # sin_t0 = 5
+    # sin_amp = 5.
+    # sin_freq = 1
+    # sin_I = lambda t: sin_amp*np.sin((sin_freq*2*np.pi)*(t-sin_t0)) if t >= sin_t0 else 0.
+    # dynamics.create_disturbance(sin_I,sin_idx)
 
     #estimate of state info
     mu0 = np.array([[4.],\
@@ -68,6 +70,7 @@ def main():
     error = prmse(x_true,x_exp)
     #plotting
     plot(t,dynamics,ekf)
+    print("steady state values: ", dynamics.measurement[:,-1])
     plt.show()
 
 ## MAIN STOPS HERE ##
