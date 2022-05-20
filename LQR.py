@@ -49,12 +49,15 @@ def simulate_withControl(dT, t, dynamics, ekf, lqr):
         u = calculate_control(K, x_error(x, lqr.xStar))
     return u
 
-def recalc_Dynamics(params):
+def recalc_Dynamics(params, dt):
     params = np.squeeze(params)
     A = np.array([[0., -params[0], params[1]],\
                   [params[2], -params[3], 0.],\
                   [0., 0., -params[4]]])
     B = np.array([[0.],[params[5]],[0.]])
+
+    A = np.eye(A.shape) + dt*A
+    B = dt*B
     return A, B
 
 def x_error(x, xStar):
@@ -68,7 +71,7 @@ def calculate_control(K, x_error):
 def main():
     #time info
     dT = 0.1
-    tf = 10
+    tf = 100
     t = np.linspace(0,tf,int(tf/dT)+1)
     N = len(t)
 
@@ -117,7 +120,7 @@ def main():
 
     Q = np.diag([1,1,.001])
     R = np.diag([1,.001,.001])
-    A, B = recalc_Dynamics(params)
+    A, B = recalc_Dynamics(params, dT)
     lqr = LQR(0, tf, [100, 0, 0], Q, R, A, B, dt = .01)
     control = simulate_withControl(dT, t, dynamics, ekf, lqr)
     plot(t, dynamics, control)
