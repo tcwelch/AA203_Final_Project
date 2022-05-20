@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 def main():
     #time info
     dT = 0.1
-    tf = 100
+    tf = 10
     t = np.linspace(0,tf,int(tf/dT)+1)
     N = len(t)
 
@@ -12,12 +12,12 @@ def main():
     x0 = np.array([[200./60],\
                    [300.],\
                    [2000.]]) #G (dl/sec),I(pmole/L),D(mg)
-    params = np.array([[0.],\
+    params = np.array([[0.01/60],\
                        [0.611/60],\
-                       [0.665/60],\
                        [0.],\
+                       [0.508/60],\
                        [4.2/60],\
-                       [1./0.0025]]) #k0,k1,ka(div by 100),km(1/L) (units converted to seconds)
+                       [1./0.0025]]) #k2,k0,k1 (=0 for diabetic),k6,ka(div by 100),km(1/L) (units converted to seconds)
     q = 0.05*x0
     #q[2] = 0 # TOGGLE on if you don't want noise in sugar intake 
     r = np.array([[0.0667],\
@@ -46,14 +46,16 @@ def main():
     mu0 = np.array([[4.],\
                     [350],\
                     [500.],\
+                    [0.015/60],\
                     [0.650/60],\
-                    [0.7/60],\
+                    [0.450/60],\
                     [5/60],\
                     [500]])
-    S0 = np.eye(7)
-    params_diabetic = np.array([[0.611/60],\
-                                [0.665/60],\
-                                [0.042/60],\
+    S0 = np.eye(8)
+    params_diabetic = np.array([[0.01/60],\
+                                [0.611/60],\
+                                [0.508/60],\
+                                [4.2/60],\
                                 [1./0.0025]])
     q_hat = 0.5*np.vstack((x0,params_diabetic)) 
     r_hat = 0.5*r 
@@ -92,10 +94,11 @@ def prmse_diabetic(x_true,x_exp):
     print('prmse I: ' + str(round(error[1],2)) + '%')
     print('prmse D: ' + str(round(error[2],2)) + '%')
     print('prmse k0: ' + str(round(error[3],2)) + '%')
-    print('prmse k1: ' + str(round(error[4],2)) + '%')
-    print('prmse ka: ' + str(round(error[5],2)) + '%')
-    print('prmse km: ' + str(round(error[6],2)) + '%')
-    print('average prmse:' + str(round(np.sum(error)/7,2)) + '%')
+    print('prmse k2: ' + str(round(error[4],2)) + '%')
+    print('prmse k6: ' + str(round(error[5],2)) + '%')
+    print('prmse ka: ' + str(round(error[6],2)) + '%')
+    print('prmse km: ' + str(round(error[7],2)) + '%')
+    print('average prmse:' + str(round(np.sum(error)/8,2)) + '%')
     return error
     
 def plot_diabetic(t,dynamics,ekf):
@@ -104,43 +107,50 @@ def plot_diabetic(t,dynamics,ekf):
     plt.subplot(3,1,1)
     plt.plot(t,dynamics.x[0,:dynamics.itr],label='true state')
     plt.plot(t,ekf.mu[0,:ekf.itr],label='ekf estimate')
-    plt.ylabel('Glucose Concentration in Blood [dl / sec]',fontsize = 9)
+    plt.ylabel('G',fontsize = 10)
     plt.title('States and Estimates vs. Time')
     plt.legend()
 
     plt.subplot(3,1,2)
     plt.plot(t,dynamics.x[1,:dynamics.itr])
     plt.plot(t,ekf.mu[1,:ekf.itr])
-    plt.ylabel('Insulin Concentration in Blood [pmol/liter]',fontsize = 9)
+    plt.ylabel('I',fontsize = 10)
 
     plt.subplot(3,1,3)
     plt.plot(t,dynamics.x[2,:dynamics.itr])
     plt.plot(t,ekf.mu[2,:ekf.itr])
-    plt.ylabel('Glucose Concentration in Stomach [mg]',fontsize = 9)
+    plt.ylabel('D',fontsize = 10)
     plt.xlabel('Time (seconds)')   
 
     #plot of parameter dynamics
     plt.figure()
-    plt.subplot(4,1,1)
+    plt.subplot(5,1,1)
+    plt.plot(t,dynamics.params[0]*np.ones((len(t),1)),label='true state')
+    plt.plot(t,ekf.mu[3,:ekf.itr],label='ekf estimate')
+    plt.ylabel('k2',fontsize = 10)
+    plt.title('States and Estimates vs. Time for Type 1 Diabetes')
+
+    plt.subplot(5,1,2)
     plt.plot(t,dynamics.params[1]*np.ones((len(t),1)))
-    plt.plot(t,ekf.mu[3,:ekf.itr])
-    plt.ylabel('k0 [1 / dl sec]',fontsize = 8)
-
-    plt.subplot(4,1,2)
-    plt.plot(t,dynamics.params[2]*np.ones((len(t),1)))
     plt.plot(t,ekf.mu[4,:ekf.itr])
-    plt.ylabel('k1 [pmol dl / sec mg l]',fontsize = 8)
+    plt.ylabel('k0',fontsize = 10)
 
-    plt.subplot(4,1,3)
-    plt.plot(t,dynamics.params[4]*np.ones((len(t),1)))
+    plt.subplot(5,1,3)
+    plt.plot(t,dynamics.params[3]*np.ones((len(t),1)))
     plt.plot(t,ekf.mu[5,:ekf.itr])
-    plt.ylabel('ka [1 / sec]',fontsize = 8)
+    plt.ylabel('k6',fontsize = 10)
 
-    plt.subplot(4,1,4)
-    plt.plot(t,dynamics.params[5]*np.ones((len(t),1)))
+    plt.subplot(5,1,4)
+    plt.plot(t,dynamics.params[4]*np.ones((len(t),1)))
     plt.plot(t,ekf.mu[6,:ekf.itr])
-    plt.ylabel('km [1 / l]',fontsize = 8)
+    plt.ylabel('ka',fontsize = 10)
+
+    plt.subplot(5,1,5)
+    plt.plot(t,dynamics.params[5]*np.ones((len(t),1)))
+    plt.plot(t,ekf.mu[7,:ekf.itr])
+    plt.ylabel('km',fontsize = 10)
     plt.xlabel('Time (seconds)')
+    plt.legend()
 
 def f_x(x,u,params):
     params = np.squeeze(params)
@@ -152,12 +162,13 @@ def f_x(x,u,params):
 
 def f_x_and_params_diabetic(x,u,params):
     extended_params = np.zeros((6,1))
-    extended_params[1] = params[0]
-    extended_params[2] = params[1]
-    extended_params[4] = params[2]
-    extended_params[5] = params[3]
+    extended_params[0] = params[0]
+    extended_params[1] = params[1]
+    extended_params[3] = params[2]
+    extended_params[4] = params[3]
+    extended_params[5] = params[4]
     x_short_dot = f_x(x,u,extended_params)
-    x_long_dot = np.zeros((7,1))
+    x_long_dot = np.zeros((8,1))
     x_long_dot[:3] = np.reshape(x_short_dot,(np.shape(x_long_dot[:3])))
     return x_long_dot
 
@@ -232,13 +243,14 @@ class EKF_Diabetic():
         i = self.itr
         self.make_space()
         #linearize A
-        A = np.array([[0.,0.,self.mu[3,i-1],self.mu[2,i-1],0.,0.,0.],\
-            [self.mu[4,i-1],0.,0.,0.,self.mu[0,i-1],0.,u[0]],\
-            [0.,0.,-self.mu[5,i-1],0.,0.,-self.mu[2,i-1],0.],\
-            [0.,0.,0.,0.,0.,0.,0.],\
-            [0.,0.,0.,0.,0.,0.,0.],\
-            [0.,0.,0.,0.,0.,0.,0.],\
-            [0.,0.,0.,0.,0.,0.,0.]]) 
+        A = np.array([[0.,-self.mu[3,i-1],self.mu[4,i-1],-self.mu[1,i-1],self.mu[2,i-1],0.,0.,0.],\
+            [0.,-self.mu[5,i-1],0.,0.,0.,-self.mu[0,i-1],0.,u[0]],\
+            [0.,0.,-self.mu[6,i-1],0.,0.,0.,-self.mu[2,i-1],0.],\
+            [0.,0.,0.,0.,0.,0.,0.,0.],\
+            [0.,0.,0.,0.,0.,0.,0.,0.],\
+            [0.,0.,0.,0.,0.,0.,0.,0.],\
+            [0.,0.,0.,0.,0.,0.,0.,0.],\
+            [0.,0.,0.,0.,0.,0.,0.,0.]]) 
         #discretize A
         A = np.eye(np.shape(A)[0]) + dT*A
         #predict
