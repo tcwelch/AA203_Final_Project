@@ -117,7 +117,7 @@ def main():
 
     Q = np.diag([1,1,.001])
     R = np.diag([1,.001,.001])
-    A, B = recalc_Dynamics()
+    A, B = recalc_Dynamics(params)
     lqr = LQR(0, tf, [100, 0, 0], Q, R, A, B, dt = .01)
     control = simulate_withControl(dT, t, dynamics, ekf, lqr)
     plot(t, dynamics, control)
