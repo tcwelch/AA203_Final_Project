@@ -7,8 +7,7 @@ from util import *
 import matplotlib.pyplot as plt
 
 class LQR():
-    def __init__(self, x, xf, Q, R, A, B, dt = .01):
-        self.x = x
+    def __init__(self, xf, Q, R, A, B, dt = .01):
         self.xStar = xf
         self.Q = Q
         self.R = R
@@ -25,8 +24,8 @@ class LQR():
         P = np.zeros((self.m,self.n)) #initializing to 0 #!!!! ISSUE
         P_old = P
         iters = 0
-        while np.any(delta >= 1e-4): #max iters constraint
-            K = -np.linalg.solve((self.R+self.B.T@P_old@self.B),self.B.T@P_old@self.A)
+        while np.any(delta >= 1e-4) and iters <1e5: #max iters constraint
+            K = -np.linalg.solve((self.R+self.B.T@P_old@self.B), self.B.T@P_old@self.A) # ERROR 
             P_new = self.Q+self.A.T@P_old@(self.A+self.B@K)
             delta = np.abs(P_old-P_new)
             P_old = P_new
@@ -34,22 +33,23 @@ class LQR():
         K = np.squeeze(K)
         print("The value of K: ", str(np.around(K, 2)))
         return K, P_old
-
         # Need to alter: So instead of a while loop, we do a 'for a dT within a time range' loop. And, every new time bracket we calculate a new K and P
         # So, instead of threshold, we would calculate a K for each time-step, making it adaptive.
 
 def simulate_withControl(dT, t, dynamics, ekf, lqr):
     #simulation loop
-    u = calculate_control(K, x_error(dynamics.x[:,0], lqr.xStar))
+    u = calculate_control(lqr.K, x_error(dynamics.x[:,0], lqr.xStar))
+    u_array = [u]
     for i in range(1,len(t)):
         x,measurement = dynamics.update_state(u,t[i],dT)
         mu = ekf.update_estimate(u,measurement,dT)
-        A,B = recalc_Dynamics(mu[3:,i-1])
+        A,B = recalc_Dynamics(mu[3:],dT)
         lqr.A = A
         lqr.B = B
-        K, P = lqr.find_K_P()
-        u = calculate_control(K, x_error(x, lqr.xStar))
-    return u
+        lqr.K, lqr.P = lqr.find_K_P()
+        u = calculate_control(lqr.K, x_error(x, lqr.xStar))
+        u_array.append(u)
+    return np.array(u_array)
 
 def recalc_Dynamics(params, dt):
     params = np.squeeze(params)
@@ -57,28 +57,30 @@ def recalc_Dynamics(params, dt):
                   [params[2], -params[3], 0.],\
                   [0., 0., -params[4]]])
     B = np.array([[0.],[params[5]],[0.]])
-
-    A = np.eye(A.shape) + dt*A
+    A = np.eye(A.shape[0], A.shape[1]) + dt*A
     B = dt*B
     return A, B
 
 def x_error(x, xStar):
-    return x-xStar
+    returnThis = x-xStar
+    returnThis[1] = 0
+    returnThis[2] = 0
+    return returnThis
 
 def calculate_control(K, x_error):
-    return np.squeeze(K@x_error)
+    return np.array([K@x_error])
 
 ## MAIN FROM NOW ON ##
 
 def main():
     #time info
     dT = 0.1
-    tf = 100
+    tf = 20
     t = np.linspace(0,tf,int(tf/dT)+1)
     N = len(t)
 
     #true state info
-    x0 = np.array([[200./60],\
+    x0 = np.array([[60],\
                    [300.],\
                    [2000.]]) #G (dl/sec),I(pmole/L),D(mg)
     params = np.array([[0.01/60],\
@@ -115,24 +117,27 @@ def main():
    
     #simulate
     print('Using Adaptive EKF = ' + str(adaptive))
-    simulate(dT,t,dynamics,ekf)
+    # simulate(dT,t,dynamics,ekf)
 
     # TO DOs: 
     #Run EKF for a long time to figure out what x_star is! G = 100 mg/dL, I = 0, D = 0
 
-    Q = np.diag([1,1,.001])
-    R = np.diag([1,.001,.001])
+    # Run for standard case! 
+    Q = np.diag([1e3,1e-3,1e-3])
+    R = np.array([1e-6]) # we want to conserve insulin
     A, B = recalc_Dynamics(params, dT)
-    lqr = LQR(0, tf, [100, 0, 0], Q, R, A, B, dt = .01)
+    lqr = LQR(np.array([100, 0, 0]), Q, R, A, B, dT)
     control = simulate_withControl(dT, t, dynamics, ekf, lqr)
     
     plt.figure()
     plt.plot(t, control)
-    plt.title('')
+    plt.title('Controller')
     plt.xlabel('Time (s)')
     plt.ylabel('Controller (pmol/s)')
-    plt.show()
+
+    plot(t,dynamics,ekf)
     plt.pause(.01)
+    plt.show()
 
     #repeat using adaptive versus non-adaptive and compare preformances when disturbances are there (change adaptive = True to False)
 

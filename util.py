@@ -174,6 +174,7 @@ class Dynamics():
         self.n = dim1[0]
         dim2 = np.shape(R)
         self.m = dim2[0]
+        self.N = N
         self.x = np.zeros((self.n,N)) 
         self.x[:,0] = np.squeeze(x0)
         self.params = params
@@ -201,10 +202,9 @@ class Dynamics():
         return self.x[:,i],self.measurement[:,i]
 
     def make_space(self):
-        dim = np.shape(self.x)
-        if dim[1] == self.itr:
-            self.x = np.reshape(self.x,(dim[0],dim[1]*2))
-            self.x = np.reshape(self.x,(dim[0],dim[1]*2))
+        if self.N == self.itr:
+            self.x = np.hstack((self.x,np.zeros((self.n,self.N))))
+            self.N = self.N*2
 
     def create_disturbance(self,dist,dist_idx):
         self.disturbances.append((dist,dist_idx))
@@ -219,6 +219,7 @@ class EKF():
         self.n = dim1[0]
         dim2 = np.shape(R)
         self.m = dim2[0]
+        self.N = N
         self.mu = np.zeros((self.n,N))
         self.mu[:,0] = np.squeeze(mu0)
         self.mu_pred = np.zeros((self.n,N)) 
@@ -276,10 +277,9 @@ class EKF():
         return self.mu[:,i]
 
     def make_space(self):
-        dim = np.shape(self.mu)
-        if dim[1] == self.itr:
-            self.mu = np.reshape(self.mu,(dim[0],dim[1]*2))
-            self.mu = np.reshape(self.mu,(dim[0],dim[1]*2))
+        if self.N == self.itr:
+            self.mu = np.hstack((self.mu,np.zeros((self.n,self.N))))
+            self.N = self.N*2
 
 if __name__ == '__main__':
 	main()
