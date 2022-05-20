@@ -23,7 +23,7 @@ class LQR():
         P = np.zeros((self.m,self.n)) #initializing to 0 #!!!! ISSUE
         P_old = P
         iters = 0
-        while np.any(delta >= 1e-4):
+        while np.any(delta >= 1e-4): #max iters constraint
             K = -np.linalg.solve((self.R+self.B.T@P_old@self.B),self.B.T@P_old@self.A)
             P_new = self.Q+self.A.T@P_old@(self.A+self.B@K)
             delta = np.abs(P_old-P_new)
@@ -41,12 +41,13 @@ def simulate_withControl(dT, t, dynamics, ekf, lqr):
     u = calculate_control(K, x_error(dynamics.x[:,0], lqr.xStar))
     for i in range(1,len(t)):
         x,measurement = dynamics.update_state(u,t[i],dT)
-        u = calculate_control(K, x_error(x, lqr.xStar))
         mu = ekf.update_estimate(u,measurement,dT)
         A,B = recalc_Dynamics(mu[3:,i-1])
         lqr.A = A
         lqr.B = B
         K, P = lqr.find_K_P()
+        u = calculate_control(K, x_error(x, lqr.xStar))
+    return u
 
 def recalc_Dynamics(params):
     params = np.squeeze(params)
@@ -111,9 +112,15 @@ def main():
     print('Using Adaptive EKF = ' + str(adaptive))
     simulate(dT,t,dynamics,ekf)
 
-    #Run EKF for a long time to figure out what x_star is!
-    #Run LQR
-    #plot results
+    # TO DOs: 
+    #Run EKF for a long time to figure out what x_star is! G = 100 mg/dL, I = 0, D = 0
+
+    Q = np.diag([1,1,.001])
+    R = np.diag([1,.001,.001])
+    A, B = recalc_Dynamics()
+    lqr = LQR(0, tf, [100, 0, 0], Q, R, A, B, dt = .01)
+    control = simulate_withControl(dT, t, dynamics, ekf, lqr)
+    plot(t, dynamics, control)
 
     #repeat using adaptive versus non-adaptive and compare preformances when disturbances are there (change adaptive = True to False)
 
