@@ -1,8 +1,10 @@
 ## AA203: Final project on Insulin-Glucose dynamics and control
 ## File is on LQR tracking and control
 
+import matplotlib
 import numpy as np
 from util import *
+import matplotlib.pyplot as plt
 
 class LQR():
     def __init__(self, x, xf, Q, R, A, B, dt = .01):
@@ -123,7 +125,14 @@ def main():
     A, B = recalc_Dynamics(params, dT)
     lqr = LQR(0, tf, [100, 0, 0], Q, R, A, B, dt = .01)
     control = simulate_withControl(dT, t, dynamics, ekf, lqr)
-    plot(t, dynamics, control)
+    
+    plt.figure()
+    plt.plot(t, control)
+    plt.title('')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Controller (pmol/s)')
+    plt.show()
+    plt.pause(.01)
 
     #repeat using adaptive versus non-adaptive and compare preformances when disturbances are there (change adaptive = True to False)
 
