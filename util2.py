@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 def main():
     #time info
     dT = 0.1
-    tf = 10
+    tf = 100
     t = np.linspace(0,tf,int(tf/dT)+1)
     N = len(t)
 
@@ -108,7 +108,7 @@ def plot_diabetic(t,dynamics,ekf):
     plt.plot(t,dynamics.x[0,:dynamics.itr],label='true state')
     plt.plot(t,ekf.mu[0,:ekf.itr],label='ekf estimate')
     plt.ylabel('G',fontsize = 10)
-    plt.title('States and Estimates vs. Time')
+    plt.title('States and Estimates vs. Time for Type 1 Diabetes')
     plt.legend()
 
     plt.subplot(3,1,2)

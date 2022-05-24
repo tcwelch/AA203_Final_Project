@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 def main():
     #time info
     dT = 0.1
-    tf = 10000
+    tf = 30
     t = np.linspace(0,tf,int(tf/dT)+1)
     N = len(t)
 
@@ -12,11 +12,11 @@ def main():
     x0 = np.array([[200./60],\
                    [300.],\
                    [2000.]]) #G (dl/sec),I(pmole/L),D(mg)
-    params = np.array([[0.01/60],\
+    params = np.array([[3/60],\
                        [0.611/60],\
                        [0.665/60],\
                        [0.508/60],\
-                       [0.042/60],\
+                       [4.2/60],\
                        [1./0.0025]]) #k2,k0,k1,k6,ka,km(1/L) (units converted to seconds)
     q = 0.05*x0
     #q[2] = 0 # TOGGLE on if you don't want noise in sugar intake 
@@ -46,11 +46,11 @@ def main():
     mu0 = np.array([[4.],\
                     [350],\
                     [500.],\
-                    [0.015/60],\
+                    [3.5/60],\
                     [0.650/60],\
                     [0.7/60],\
                     [0.450/60],\
-                    [0.05/60],\
+                    [5/60],\
                     [500]])
     S0 = np.eye(9)
     q_hat = 0.5*np.vstack((x0,params)) 
@@ -104,19 +104,19 @@ def plot(t,dynamics,ekf):
     plt.subplot(3,1,1)
     plt.plot(t,dynamics.x[0,:dynamics.itr],label='true state')
     plt.plot(t,ekf.mu[0,:ekf.itr],label='ekf estimate')
-    plt.ylabel('Glucose Concentration in Blood [dl / sec]',fontsize = 9)
+    plt.ylabel('G',fontsize = 10)
     plt.title('States and Estimates vs. Time')
     plt.legend()
 
     plt.subplot(3,1,2)
     plt.plot(t,dynamics.x[1,:dynamics.itr])
     plt.plot(t,ekf.mu[1,:ekf.itr])
-    plt.ylabel('Insulin Concentration in Blood [pmol/liter]',fontsize = 9)
+    plt.ylabel('I',fontsize = 10)
 
     plt.subplot(3,1,3)
     plt.plot(t,dynamics.x[2,:dynamics.itr])
     plt.plot(t,ekf.mu[2,:ekf.itr])
-    plt.ylabel('Glucose Concentration in Stomach [mg]',fontsize = 9)
+    plt.ylabel('D',fontsize = 10)
     plt.xlabel('Time (seconds)')   
 
     #plot of parameter dynamics
@@ -124,34 +124,34 @@ def plot(t,dynamics,ekf):
     plt.subplot(6,1,1)
     plt.plot(t,dynamics.params[0]*np.ones((len(t),1)),label='actual value')
     plt.plot(t,ekf.mu[3,:ekf.itr],label='ekf estimate')
-    plt.ylabel('k2 [mg l / dl sec pmol]',fontsize = 8)
+    plt.ylabel('k2',fontsize = 10)
     plt.title('Parameters and Estimates vs. Time')
     plt.legend(loc='right')
 
     plt.subplot(6,1,2)
     plt.plot(t,dynamics.params[1]*np.ones((len(t),1)))
     plt.plot(t,ekf.mu[4,:ekf.itr])
-    plt.ylabel('k0 [1 / dl sec]',fontsize = 8)
+    plt.ylabel('k0',fontsize = 10)
 
     plt.subplot(6,1,3)
     plt.plot(t,dynamics.params[2]*np.ones((len(t),1)))
     plt.plot(t,ekf.mu[5,:ekf.itr])
-    plt.ylabel('k1 [pmol dl / sec mg l]',fontsize = 8)
+    plt.ylabel('k1',fontsize = 10)
 
     plt.subplot(6,1,4)
     plt.plot(t,dynamics.params[3]*np.ones((len(t),1)))
     plt.plot(t,ekf.mu[6,:ekf.itr])
-    plt.ylabel('k6 [1 / sec]',fontsize = 8)
+    plt.ylabel('k6',fontsize = 10)
 
     plt.subplot(6,1,5)
     plt.plot(t,dynamics.params[4]*np.ones((len(t),1)))
     plt.plot(t,ekf.mu[7,:ekf.itr])
-    plt.ylabel('ka [1 / sec]',fontsize = 8)
+    plt.ylabel('ka',fontsize = 10)
 
     plt.subplot(6,1,6)
     plt.plot(t,dynamics.params[5]*np.ones((len(t),1)))
     plt.plot(t,ekf.mu[8,:ekf.itr])
-    plt.ylabel('km [1 / l]',fontsize = 8)
+    plt.ylabel('km',fontsize = 10)
     plt.xlabel('Time (seconds)')
 
 def f_x(x,u,params):

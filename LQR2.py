@@ -3,11 +3,11 @@
 
 import matplotlib
 import numpy as np
-from util import *
+from util2 import *
 import matplotlib.pyplot as plt
 
 class LQR():
-    def __init__(self, xf, Q, R, A, B, dt = .01):
+    def __init__(self, xf, Q, R, A, B, dt):
         self.xStar = xf
         self.Q = Q
         self.R = R
@@ -38,7 +38,7 @@ class LQR():
 
 def simulate_withControl(dT, t, dynamics, ekf, lqr):
     #simulation loop
-    u = calculate_control(lqr.K, x_error(dynamics.x[:,0], lqr.xStar))
+    u = calculate_control(lqr.K, x_error(dynamics.x[:,0], lqr.xStar)) #np.array([0.])
     u_array = [u]
     for i in range(1,len(t)):
         x,measurement = dynamics.update_state(u,t[i],dT)
@@ -54,9 +54,9 @@ def simulate_withControl(dT, t, dynamics, ekf, lqr):
 def recalc_Dynamics(params, dt):
     params = np.squeeze(params)
     A = np.array([[0., -params[0], params[1]],\
-                  [params[2], -params[3], 0.],\
-                  [0., 0., -params[4]]])
-    B = np.array([[0.],[params[5]],[0.]])
+                  [0., -params[2], 0.],\
+                  [0., 0., -params[3]]])
+    B = np.array([[0.],[params[4]],[0.]])
     A = np.eye(A.shape[0], A.shape[1]) + dt*A
     B = dt*B
     return A, B
@@ -68,14 +68,14 @@ def x_error(x, xStar):
     return returnThis
 
 def calculate_control(K, x_error):
-    return np.maximum(np.array([0.]),np.array([K@x_error]))
+    return np.array([K@x_error])
 
 ## MAIN FROM NOW ON ##
 
 def main():
     #time info
     dT = 0.1
-    tf = 30
+    tf = 5
     t = np.linspace(0,tf,int(tf/dT)+1)
     N = len(t)
 
@@ -85,7 +85,7 @@ def main():
                    [1500.]]) #G (dl/sec),I(pmole/L),D(mg)
     params = np.array([[0.01/60],\
                        [0.611/60],\
-                       [0.665/60],\
+                       [0.],\
                        [0.508/60],\
                        [4.2/60],\
                        [1./0.0025]]) #k2,k0,k1,k6,ka,km(1/L) (units converted to seconds)
@@ -103,28 +103,30 @@ def main():
                     [500.],\
                     [0.015/60],\
                     [0.650/60],\
-                    [0.7/60],\
                     [0.450/60],\
                     [5/60],\
                     [500]])
-    S0 = np.eye(9)
-    q_hat = 0.5*np.vstack((x0,params)) 
+    S0 = np.eye(8)
+    params_diabetic = np.array([[0.01/60],\
+                                [0.611/60],\
+                                [0.508/60],\
+                                [4.2/60],\
+                                [1./0.0025]])
+    q_hat = 0.5*np.vstack((x0,params_diabetic)) 
     r_hat = 0.5*r 
     Q_hat = np.diag(np.squeeze(q_hat))
     R_hat = np.diag(np.squeeze(r_hat))
     alpha = 0.01
     adaptive = True
-    ekf = EKF(mu0,S0,f_x_and_params,Q_hat,R_hat,adaptive,alpha,N)
+    ekf_diabetic = EKF_Diabetic(mu0,S0,f_x_and_params_diabetic,Q_hat,R_hat,adaptive,alpha,N)
    
-    #simulate
     print('Using Adaptive EKF = ' + str(adaptive))
-
     # Run for standard case! 
     Q = np.diag([1e3,1e-3,1e-3])
-    R = np.array([1e-6]) # we want to conserve insulin
-    A, B = recalc_Dynamics(params, dT)
+    R = np.array([1e-3]) # we want to conserve insulin
+    A, B = recalc_Dynamics(params_diabetic, dT)
     lqr = LQR(np.array([100, 0, 0]), Q, R, A, B, dT)
-    control = simulate_withControl(dT, t, dynamics, ekf, lqr)
+    control = simulate_withControl(dT, t, dynamics, ekf_diabetic, lqr)
     
     plt.figure()
     plt.plot(t, control)
@@ -132,11 +134,9 @@ def main():
     plt.xlabel('Time (s)')
     plt.ylabel('Controller (pmol/s)')
 
-    plot(t,dynamics,ekf)
-    plt.pause(.01)
+    plot_diabetic(t,dynamics,ekf_diabetic)
     plt.show()
 
-    #repeat using adaptive versus non-adaptive and compare preformances when disturbances are there (change adaptive = True to False)
 
 if __name__ == '__main__':
 	main()
